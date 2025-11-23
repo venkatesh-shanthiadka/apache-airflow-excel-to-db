@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import os
 
@@ -46,7 +46,7 @@ def process_data():
     cursor.close()
     connection.close()
 
-with DAG('excel_to_postgres', default_args=default_args, schedule='@daily', catchup=False) as dag:
+with DAG('excel_to_postgres', default_args=default_args, schedule=timedelta(seconds=10), catchup=False) as dag:
     
     create_table_task = PythonOperator(
         task_id='create_table',
