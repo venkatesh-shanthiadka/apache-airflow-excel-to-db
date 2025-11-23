@@ -20,17 +20,21 @@ default_args = {
 def advanced_api_dag():
     @task()
     def fetch_data():
+        print("-->Fetching data...")
         url = "https://jsonplaceholder.typicode.com/todos/1"
         with urllib.request.urlopen(url) as response:
             data = json.loads(response.read().decode())
+        print("-->Data fetched successfully.")
         return data
 
     @task()
     def store_data(data: dict):
+        print("-->Storing data...")
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f"/opt/airflow/dags/data_{timestamp}.json"
         with open(filename, "w") as f:
             json.dump(data, f, indent=2)
+        print("-->Data stored successfully.")
         return f"Stored data to {filename}"
 
     data = fetch_data()

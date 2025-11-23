@@ -4,3 +4,4 @@ logs
 **/*.pyc
 **/*.pyo
 **/*.pyd
+postgres_db_volume
