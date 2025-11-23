@@ -1,9 +1,9 @@
 import json
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.decorators import dag, task
-
+from airflow.timetables.trigger import DeltaTriggerTimetable
 default_args = {
     "owner": "airflow",
     "retries": 1,
@@ -11,7 +11,8 @@ default_args = {
 
 @dag(
     dag_id="advanced_api_dag",
-    schedule="@once",
+    # schedule="@once",
+    schedule=DeltaTriggerTimetable(timedelta(seconds=10)),
     start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args=default_args,

@@ -104,3 +104,5 @@ Key environment variables configured in `compose.yml`:
 
 # After the docker compose up below is the state of the services
 ![Airflow UI Screenshot](./assets/image.png)
+
+https://airflow.apache.org/docs/apache-airflow/stable/tutorial/pipeline.html
