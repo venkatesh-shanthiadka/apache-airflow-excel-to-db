@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: airflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - airflow-network
+
+  airflow:
+    image: apache/airflow:3.1.6rc1-python3.13
+    container_name: airflow-standalone
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # network_mode: host
+    environment:
+      # Core Airflow Configuration
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: 16
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 16
+      AIRFLOW__CORE__PARALLELISM: 32
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG_RUN: 16
+      
+      # Database Configuration (PostgreSQL)
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-airflow}:${POSTGRES_PASSWORD:-airflow}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-airflow}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 20
+      AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_RECYCLE: 3600
+      
+      # Webserver Configuration (Updated for 3.x)
+      AIRFLOW__WEBSERVER__AUTHENTICATE: 'true'
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.auth.backends.password_auth
+      AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: UTC
+      AIRFLOW__WEBSERVER__WORKER_TIMEOUT: 120
+      
+      # API Configuration (Moved from webserver in 3.x)
+      AIRFLOW__API__PORT: 8080
+      AIRFLOW__API__WORKERS: 4
+      AIRFLOW__API__EXPOSE_CONFIG: 'true'
+      AIRFLOW__API__BASE_URL: http://localhost:8080
+      
+      # Security
+      AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      
+      # Logging Configuration (Updated for 3.x)
+      AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+      AIRFLOW__LOGGING__FAB_LOGGING_LEVEL: WARN
+      AIRFLOW__LOGGING__REMOTE_LOGGING: 'false'
+      AIRFLOW__LOGGING__COLORED_CONSOLE_LOG: 'true'
+      AIRFLOW__LOGGING__COLORED_LOG_FORMAT: '[%%(blue)s%%(asctime)s%%(reset)s] {%%(blue)s%%(filename)s:%%(reset)s%%(lineno)d} %%(log_color)s%%(levelname)s%%(reset)s - %%(log_color)s%%(message)s%%(reset)s'
+      
+      # Scheduler Configuration (Enhanced for 3.x)
+      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 300
+      AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT: 'false'
+      AIRFLOW__SCHEDULER__MAX_THREADS: 2
+      AIRFLOW__SCHEDULER__PROCESSOR_POLL_INTERVAL: 1
+      AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 30
+      AIRFLOW__SCHEDULER__DAG_FILE_PROCESSOR_TIMEOUT: 50
+      AIRFLOW__SCHEDULER__ZOMBIE_TASK_THRESHOLD: 300
+      AIRFLOW__SCHEDULER__SCHEDULE_AFTER_TASK_EXECUTION: 'true'
+      
+      # Task Configuration
+      AIRFLOW__CELERY__TASK_TRACK_STARTED: 'true'
+      AIRFLOW__CELERY__TASK_PUBLISH_RETRY: 'true'
+      
+      # API Configuration (New in 3.x)
+      AIRFLOW__API__AUTH_BACKENDS: airflow.auth.backends.password_auth
+      AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'false'
+      
+      # Email Configuration (optional)
+      AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
+      AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST:-localhost}
+      AIRFLOW__SMTP__SMTP_STARTTLS: 'true'
+      AIRFLOW__SMTP__SMTP_SSL: 'false'
+      AIRFLOW__SMTP__SMTP_PORT: 587
+      AIRFLOW__SMTP__SMTP_MAIL_FROM: ${SMTP_MAIL_FROM:-airflow@example.com}
+      
+      # Metrics and Monitoring (Enhanced in 3.x)
+      AIRFLOW__METRICS__STATSD_ON: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      
+      # Security enhancements for 3.x
+      AIRFLOW__WEBSERVER__COOKIE_SECURE: 'false'
+      AIRFLOW__WEBSERVER__COOKIE_SAMESITE: 'Lax'
+      AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES: ''
+      
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - airflow-data:/opt/airflow
+    ports:
+      - "8080:8080"
+      
+    command: >
+      bash -c "
+        airflow db migrate &&
+        airflow standalone
+      "
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+      
+    networks:
+      - airflow-network
+
+volumes:
+  airflow-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  airflow-network:
+    driver: bridge

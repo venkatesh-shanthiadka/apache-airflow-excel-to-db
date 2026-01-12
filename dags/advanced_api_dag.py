@@ -25,7 +25,8 @@ def advanced_api_dag():
     def fetch_data():
         print("-->Fetching data...")
         url = "https://jsonplaceholder.typicode.com/todos"
-        with urllib.request.urlopen(url) as response:
+        # Set timeout to 30 seconds to prevent hanging
+        with urllib.request.urlopen(url, timeout=30) as response:
             data = json.loads(response.read().decode())
         print(f"-->Fetched {len(data)} records.")
         print("-->Data fetched successfully.")
