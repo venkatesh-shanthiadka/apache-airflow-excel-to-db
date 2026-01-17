@@ -18,7 +18,7 @@ default_args = {
     # start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args=default_args,
-    tags=["example"],
+    tags=["coverity"],
 )
 def advanced_api_dag():
     @task()
@@ -53,10 +53,10 @@ def advanced_api_dag():
             print(f"-->User ID: {item.get('userId')}")
             print(f"-->Completed: {item.get('completed')}")
             
-            # Simulate failure for item with id 5
-            if item.get('id') == 5:
-                print(f"-->ERROR: Failed to process item {item.get('id')}")
-                raise Exception(f"Processing failed for item ID {item.get('id')}: Simulated failure")
+            # # Simulate failure for item with id 5
+            # if item.get('id') == 5:
+            #     print(f"-->ERROR: Failed to process item {item.get('id')}")
+            #     raise Exception(f"Processing failed for item ID {item.get('id')}: Simulated failure")
             
             time.sleep(2)
             processed_result = {

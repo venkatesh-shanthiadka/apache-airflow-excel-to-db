@@ -6,8 +6,8 @@ services:
       - POSTGRES_USER=airflow
       - POSTGRES_PASSWORD=airflow
       - POSTGRES_DB=airflow
-    volumes:
-      - postgres-db:/var/lib/postgresql/data
+    # volumes:
+    #   - postgres-db:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
